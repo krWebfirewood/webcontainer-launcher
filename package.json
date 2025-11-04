@@ -1,0 +1,10 @@
+{
+  "name": "webcontainer-launcher",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "WebContainer 데모를 위한 런처",
+  "scripts": {
+    "start": "node launcher-server.js"
+  }
+}
+

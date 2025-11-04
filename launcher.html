@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>WebContainer 런처 - Node 없이 실행!</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E🚀%3C/text%3E%3C/svg%3E"
+    />
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+      .container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+      h1 {
+        margin: 0 0 10px 0;
+        font-size: 2.5em;
+      }
+      .highlight {
+        background: rgba(255, 255, 0, 0.3);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .status {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      button {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        font-size: 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 5px;
+        transition: all 0.3s;
+      }
+      button:hover {
+        background: #45a049;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+      button:disabled {
+        background: #666;
+        cursor: not-allowed;
+        transform: none;
+      }
+      button.open-new {
+        background: #2196f3;
+      }
+      button.open-new:hover {
+        background: #1976d2;
+      }
+      iframe {
+        width: 100%;
+        height: 600px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        margin-top: 20px;
+        background: white;
+      }
+      .ide-grid {
+        display: grid;
+        grid-template-columns: 280px 1fr 480px;
+        grid-template-rows: 420px auto;
+        gap: 16px;
+        align-items: stretch;
+        margin-top: 18px;
+      }
+      .pane {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        padding: 10px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      #tree {
+        overflow: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: nowrap;
+        user-select: none;
+      }
+      #tree button,
+      #tree .file {
+        background: transparent;
+        color: #fff;
+        border: 0;
+        cursor: pointer;
+        text-align: left;
+        width: 100%;
+      }
+      #editor {
+        flex: 1;
+        background: #1e1e1e;
+        border-radius: 6px;
+      }
+      #editor-toolbar {
+        margin-bottom: 8px;
+        display: flex;
+        gap: 8px;
+      }
+      #terminal {
+        flex: 1;
+        background: #000;
+        border-radius: 6px;
+      }
+      .row-span-2 {
+        grid-row: span 2;
+      }
+      .muted {
+        opacity: 0.75;
+      }
+      .proof {
+        background: rgba(255, 100, 100, 0.3);
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+        border-left: 4px solid #ff6b6b;
+      }
+      .proof h3 {
+        margin-top: 0;
+      }
+      .warning-box {
+        background: rgba(255, 152, 0, 0.3);
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+        border-left: 4px solid #ff9800;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚀 WebContainer 데모</h1>
+      <p style="font-size: 1.2em">
+        <span class="highlight">로컬 Node.js 없이</span> 브라우저에서 Node 서버
+        실행하기
+      </p>
+
+      <div class="proof">
+        <h3>📋 </h3>
+        <ul>
+          <li>
+            ✅ 이 페이지는 정적 HTML입니다 (file:// 또는 간단한 HTTP 서버)
+          </li>
+          <li>✅ WebContainer API가 브라우저 안에 Node 환경을 생성합니다</li>
+          <li>
+            ✅ 아래 iframe의 URL을 보세요 - <code>localhost</code>가 아닙니다!
+          </li>
+          <li>✅ DevTools Network 탭에서 확인 가능</li>
+        </ul>
+      </div>
+
+      <div class="warning-box">
+        <h3>⚠️ 새 탭으로 열기 제한사항</h3>
+        <p>
+          <strong
+            >WebContainer의 프리뷰 URL은 새 탭에서 직접 열 수 없습니다.</strong
+          >
+        </p>
+        <p>
+          이유: WebContainer는 보안상 원래 페이지(이 탭)에서만 서버에 접근할 수
+          있습니다.
+        </p>
+        <p>
+          💡 <strong>해결책:</strong> 아래 iframe에서 프리뷰를 보거나, "🔗
+          프록시 새 탭 열기" 버튼을 사용하세요.
+        </p>
+      </div>
+
+      <div>
+        <button id="startBtn">▶️ WebContainer에서 Node 서버 시작</button>
+        <button id="checkNodeBtn" disabled>🔍 Node 버전 확인</button>
+        <button id="installBtn" disabled>📦 npm 패키지 설치</button>
+        <button id="createFileBtn" disabled>📝 파일 생성</button>
+      </div>
+      <div style="margin-top: 12px">
+        <button id="btn-tree">🔎 샌드박스 트리</button>
+        <button id="btn-usage">💾 사용량</button>
+        <button id="btn-zip">⬇️ ZIP로 내보내기</button>
+        <button id="btn-ide">🧰 IDE 표시/숨김</button>
+        <button id="btn-open-new" class="open-new" disabled>
+          🔗 프록시 새 탭 열기
+        </button>
+        <span id="preview-url" class="muted"></span>
+      </div>
+
+      <div class="status" id="status">
+        대기 중... "WebContainer에서 Node 서버 시작" 버튼을 클릭하세요. ⚠️ 주의:
+        WebContainer API는 Chrome/Edge에서만 작동합니다.
+      </div>
+
+      <iframe id="preview" style="display: none"></iframe>
+
+      <div id="ide" class="ide-grid" style="display: none">
+        <div class="pane">
+          <div style="font-weight: 700; margin-bottom: 6px">📁 Files</div>
+          <div id="tree"></div>
+        </div>
+        <div class="pane row-span-2">
+          <div id="editor-toolbar">
+            <button id="btn-save">💾 저장</button>
+            <span id="opened-path" class="muted">열린 파일 없음</span>
+          </div>
+          <div id="editor"></div>
+        </div>
+        <div class="pane">
+          <div style="font-weight: 700; margin-bottom: 6px">⌨️ Terminal</div>
+          <div id="terminal" style="height: 360px"></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { WebContainer } from "https://esm.sh/@webcontainer/api@1.1.9";
+      import {
+        EditorView,
+        keymap,
+        lineNumbers,
+      } from "https://esm.sh/@codemirror/view@6?pin=v135&deps=@codemirror/state@6";
+      import { EditorState } from "https://esm.sh/@codemirror/state@6?pin=v135";
+      import {
+        indentWithTab,
+        defaultKeymap,
+        history,
+        historyKeymap,
+      } from "https://esm.sh/@codemirror/commands@6?pin=v135&deps=@codemirror/state@6";
+      import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6?pin=v135&deps=@codemirror/state@6";
+      import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6?pin=v135&deps=@codemirror/state@6";
+
+      // xterm CSS 주입
+      {
+        const cssUrls = [
+          "https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css",
+          "https://unpkg.com/@xterm/xterm@5.5.0/css/xterm.css",
+        ];
+        let injected = false;
+        for (const u of cssUrls) {
+          try {
+            const res = await fetch(u, { mode: "cors" });
+            if (!res.ok) continue;
+            const css = await res.text();
+            const st = document.createElement("style");
+            st.textContent = css;
+            st.dataset.origin = "xterm-css";
+            document.head.appendChild(st);
+            injected = true;
+            break;
+          } catch {}
+        }
+        if (!injected) console.warn("xterm CSS 주입 실패");
+      }
+
+      async function importWithFallback(candidates) {
+        for (const url of candidates) {
+          try {
+            return await import(url);
+          } catch (e) {
+            console.debug("모듈 로드 실패, 다음 후보로:", url, e.message);
+          }
+        }
+        throw new Error("모듈 로드 실패: " + candidates.join(", "));
+      }
+
+      const { Terminal } = await importWithFallback([
+        "https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/+esm",
+        "https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js",
+        "https://unpkg.com/@xterm/xterm@5.5.0/lib/xterm.js?module",
+      ]);
+
+      const { FitAddon } = await importWithFallback([
+        "https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/+esm",
+        "https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js",
+        "https://unpkg.com/@xterm/addon-fit@0.10.0/lib/addon-fit.js?module",
+      ]);
+
+      const statusEl = document.getElementById("status");
+      const previewEl = document.getElementById("preview");
+      const startBtn = document.getElementById("startBtn");
+      const checkNodeBtn = document.getElementById("checkNodeBtn");
+      const installBtn = document.getElementById("installBtn");
+      const createFileBtn = document.getElementById("createFileBtn");
+      const ideEl = document.getElementById("ide");
+      const treeEl = document.getElementById("tree");
+      const btnIDE = document.getElementById("btn-ide");
+      const btnOpenNew = document.getElementById("btn-open-new");
+      const previewUrlLabel = document.getElementById("preview-url");
+      const openedPathEl = document.getElementById("opened-path");
+      const btnSave = document.getElementById("btn-save");
+
+      let editorView,
+        currentPath = null;
+      let term, fit, shellProc, serverProc;
+      let lastPreviewUrl = "";
+      let fsPollTimer = null;
+      let proxyWindow = null;
+      let webcontainerInstance;
+
+      window.__wc = () => webcontainerInstance;
+
+      function log(msg) {
+        statusEl.textContent += "\n" + msg;
+        statusEl.scrollTop = statusEl.scrollHeight;
+        console.log(msg);
+      }
+
+      async function isDir(p) {
+        try {
+          await webcontainerInstance.fs.readdir(p);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      async function fileSize(p) {
+        try {
+          const b = await webcontainerInstance.fs.readFile(p);
+          return (b.byteLength ?? b.length) | 0;
+        } catch {
+          return 0;
+        }
+      }
+
+      async function drawTree(root = "/", maxDepth = 2, skipHeavy = true) {
+        async function walk(p, depth, lines) {
+          const indent = "  ".repeat(depth);
+          if (skipHeavy && p.startsWith("/node_modules")) {
+            lines.push(`${indent}└─ node_modules/ …`);
+            return;
+          }
+          const entries = await webcontainerInstance.fs.readdir(p);
+          const dirs = [];
+          const files = [];
+          for (const name of entries) {
+            const full = p.endsWith("/") ? p + name : p + "/" + name;
+            if (await isDir(full)) dirs.push({ name, full });
+            else files.push({ name, full });
+          }
+          for (const d of dirs) {
+            lines.push(`${indent}📁 ${d.name}/`);
+            if (depth < maxDepth) await walk(d.full, depth + 1, lines);
+            else lines.push(`${indent}  …`);
+          }
+          for (const f of files) {
+            const sz = await fileSize(f.full);
+            const human =
+              sz >= 1024 ? `${(sz / 1024).toFixed(1)} KB` : `${sz} B`;
+            lines.push(`${indent}📄 ${f.name}  (${human})`);
+          }
+        }
+        const lines = ["🌳 Sandbox FS"];
+        await walk(root, 0, lines);
+        log(lines.join("\n"));
+      }
+
+      document.getElementById("btn-tree").onclick = async () => {
+        if (!webcontainerInstance)
+          return log("먼저 WebContainer를 시작하세요.");
+        await drawTree("/", 2, true);
+      };
+
+      document.getElementById("btn-usage").onclick = async () => {
+        try {
+          const { usage, quota } = await navigator.storage.estimate();
+          const u = ((usage || 0) / (1024 * 1024)).toFixed(1);
+          const q = ((quota || 0) / (1024 * 1024)).toFixed(0);
+          log(`💾 OPFS usage: ${u} MB / ${q} MB (origin-private file system)`);
+        } catch (e) {
+          log("OPFS 용량 조회 실패: " + e.message);
+        }
+      };
+
+      import JSZip from "https://esm.sh/jszip@3.10.1";
+
+      async function zipFolder(zip, path = "/", maxDepth = 3) {
+        const entries = await webcontainerInstance.fs.readdir(path);
+        for (const name of entries) {
+          const full = path === "/" ? `/${name}` : `${path}/${name}`;
+          const isD = await isDir(full);
+          if (isD) {
+            if (name === "node_modules" && maxDepth <= 2) {
+              zip.folder("node_modules").file("README.txt", "omitted in demo");
+              continue;
+            }
+            const sub = zip.folder(name);
+            await zipFolder(sub, full, maxDepth - 1);
+          } else {
+            const buf = await webcontainerInstance.fs.readFile(full);
+            zip.file(name, buf);
+          }
+        }
+      }
+
+      document.getElementById("btn-zip").onclick = async () => {
+        try {
+          if (!webcontainerInstance)
+            return log("먼저 WebContainer를 시작하세요.");
+          log("📦 ZIP 패키징 중…");
+          const zip = new JSZip();
+          await zipFolder(zip, "/");
+          const blob = await zip.generateAsync({ type: "blob" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "sandbox.zip";
+          a.click();
+          URL.revokeObjectURL(a.href);
+          log("✅ ZIP 다운로드 완료");
+        } catch (e) {
+          log("ZIP 실패: " + e.message);
+        }
+      };
+
+      // 새 탭에서 프록시로 열기
+      btnOpenNew.onclick = () => {
+        if (!lastPreviewUrl) {
+          log("⚠️ 먼저 서버를 시작하세요");
+          return;
+        }
+
+        const proxyHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>WebContainer Preview Proxy</title>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; }
+    iframe { width: 100%; height: 100vh; border: none; }
+    .info {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-family: system-ui;
+      font-size: 12px;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+  <div class="info">
+    📡 WebContainer 프록시 모드<br>
+    원본 탭을 닫지 마세요!
+  </div>
+  <iframe src="${lastPreviewUrl}"></iframe>
+</body>
+</html>`;
+
+        const blob = new Blob([proxyHtml], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+
+        if (proxyWindow && !proxyWindow.closed) {
+          proxyWindow.location.href = url;
+          proxyWindow.focus();
+        } else {
+          proxyWindow = window.open(url, "_blank");
+        }
+
+        log("🔗 프록시 창을 새 탭에서 열었습니다");
+        log("⚠️ 원본 탭(이 페이지)을 닫으면 프록시도 작동하지 않습니다");
+      };
+
+      const files = {
+        "package.json": {
+          file: {
+            contents: JSON.stringify(
+              {
+                name: "webcontainer-demo",
+                type: "module",
+                dependencies: { express: "latest" },
+                scripts: { start: "node server.js" },
+              },
+              null,
+              2
+            ),
+          },
+        },
+        "server.js": {
+          file: {
+            contents: `import express from 'express';
+import { createHash } from 'crypto';
+import { stat } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+const app = express();
+const port = 3000;
+const rootDir = process.cwd();
+
+app.use(express.static(rootDir));
+
+app.get('/', async (req, res) => {
+  try {
+    const p = resolve(rootDir, 'index.html');
+    await stat(p);
+    return res.sendFile(p);
+  } catch {}
+  
+  const info = {
+    message: '🎉 이 서버는 브라우저 안에서 실행됩니다!',
+    nodeVersion: process.version,
+    platform: process.platform,
+    pid: process.pid,
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    cwd: process.cwd()
+  };
+
+  res.send(\`<!DOCTYPE html>
+<html>
+<head>
+  <title>WebContainer Node Server</title>
+  <style>
+    body {
+      font-family: system-ui;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    h1 { margin-top: 0; }
+    pre {
+      background: rgba(0,0,0,0.3);
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .highlight {
+      background: rgba(255,255,0,0.3);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>✨ 성공! Node.js가 브라우저에서 실행 중입니다</h1>
+    <p><span class="highlight">이것은 로컬 Node.js가 아닙니다!</span></p>
+    <p>WebContainer API가 브라우저 내부에 완전한 Node 환경을 만들었습니다.</p>
+    <h2>📊 서버 정보</h2>
+    <pre>\${JSON.stringify(info, null, 2)}</pre>
+    <h2>🔧 테스트</h2>
+    <p>Hash: <strong>\${createHash('sha256').update('hello').digest('hex')}</strong></p>
+  </div>
+</body>
+</html>\`);
+});
+
+app.get('/api/test', (req, res) => {
+  res.json({
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    hash: createHash('md5').update(Date.now().toString()).digest('hex')
+  });
+});
+
+app.listen(port, "0.0.0.0", () => {
+  console.log(\`Server running at http://localhost:\${port}\`);
+});`,
+          },
+        },
+      };
+
+      startBtn.onclick = async () => {
+        try {
+          startBtn.disabled = true;
+          log("🔧 WebContainer 초기화 중...");
+
+          webcontainerInstance = await WebContainer.boot();
+          log("✅ WebContainer 부팅 완료!");
+          log("📁 프로젝트 파일 마운트 중...");
+
+          await webcontainerInstance.mount(files);
+          log("✅ 파일 마운트 완료!");
+
+          checkNodeBtn.disabled = false;
+          installBtn.disabled = false;
+          createFileBtn.disabled = false;
+          btnIDE.disabled = false;
+          setupEditor();
+          setupTerminal();
+          renderTree();
+          startFsAutoRefresh();
+
+          webcontainerInstance.on("server-ready", (port, url) => {
+            lastPreviewUrl = url;
+            btnOpenNew.disabled = false;
+            log(`\n🎉 서버 준비 완료! 포트 ${port}`);
+            log(`🌐 URL: ${url}`);
+            log(`💡 "프록시 새 탭 열기" 버튼으로 별도 창에서 볼 수 있습니다`);
+            previewUrlLabel.textContent = " " + url;
+            previewEl.src = url;
+            previewEl.style.display = "block";
+            previewEl.dataset.previewUrl = url;
+          });
+
+          log("\n📦 npm install 실행 중...");
+          const installProcess = await webcontainerInstance.spawn("npm", [
+            "install",
+          ]);
+          installProcess.output.pipeTo(
+            new WritableStream({
+              write(data) {
+                log(data);
+              },
+            })
+          );
+
+          const installExitCode = await installProcess.exit;
+          if (installExitCode !== 0) {
+            log("❌ npm install 실패!");
+            return;
+          }
+          log("✅ npm install 완료!");
+          await startServer("start");
+        } catch (error) {
+          log(`❌ 오류: ${error.message}`);
+          console.error(error);
+        }
+      };
+
+      checkNodeBtn.onclick = async () => {
+        log("\n🔍 Node 버전 확인 중...");
+        const process = await webcontainerInstance.spawn("node", ["--version"]);
+        process.output.pipeTo(
+          new WritableStream({
+            write(data) {
+              log(`Node 버전: ${data}`);
+            },
+          })
+        );
+        await process.exit;
+      };
+
+      installBtn.onclick = async () => {
+        const pkg = prompt("설치할 패키지 이름:", "lodash");
+        if (!pkg) return;
+        log(`\n📦 ${pkg} 설치 중...`);
+        const process = await webcontainerInstance.spawn("npm", [
+          "install",
+          pkg,
+        ]);
+        process.output.pipeTo(
+          new WritableStream({
+            write(data) {
+              log(data);
+            },
+          })
+        );
+        await process.exit;
+        log(`✅ ${pkg} 설치 완료!`);
+      };
+
+      createFileBtn.onclick = async () => {
+        const filename = prompt("파일 이름:", "test.txt");
+        if (!filename) return;
+        const content = prompt("파일 내용:", "Hello from WebContainer!");
+        log(`\n📝 ${filename} 생성 중...`);
+        await webcontainerInstance.fs.writeFile(filename, content);
+        log(`✅ ${filename} 생성 완료!`);
+        const readContent = await webcontainerInstance.fs.readFile(
+          filename,
+          "utf-8"
+        );
+        log(`📖 파일 내용: ${readContent}`);
+      };
+
+      async function startServer(script = "start") {
+        log("\n🚀 서버 시작 중...");
+        if (serverProc) {
+          try {
+            serverProc.kill();
+          } catch {}
+        }
+        serverProc = await webcontainerInstance.spawn("npm", ["run", script]);
+        serverProc.output.pipeTo(
+          new WritableStream({
+            write(data) {
+              log(data);
+            },
+          })
+        );
+      }
+
+      window.__restart = async () => {
+        if (!webcontainerInstance) return;
+        await startServer("start");
+        log("🔁 서버 재시작 완료");
+      };
+
+      function setupEditor() {
+        const parent = document.getElementById("editor");
+        const baseExt = [
+          lineNumbers(),
+          history(),
+          keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+        ];
+        try {
+          editorView = new EditorView({
+            parent,
+            state: EditorState.create({
+              doc: "",
+              extensions: [...baseExt, oneDark, javascript()],
+            }),
+          });
+        } catch (e) {
+          console.warn("CodeMirror 확장 충돌 감지, 최소 구성으로 재시도:", e);
+          editorView = new EditorView({
+            parent,
+            state: EditorState.create({ doc: "", extensions: baseExt }),
+          });
+          log("⚠️ 에디터를 최소 구성으로 실행했습니다.");
+        }
+
+        btnSave.onclick = async () => {
+          if (!currentPath) return log("열린 파일이 없습니다");
+          const content = editorView.state.doc.toString();
+          await webcontainerInstance.fs.writeFile(currentPath, content);
+          log(`💾 저장: ${currentPath}`);
+          if (
+            previewEl.dataset.previewUrl &&
+            /\/index\.html$/.test(currentPath)
+          ) {
+            const base = previewEl.dataset.previewUrl;
+            previewEl.src =
+              base + (base.includes("?") ? "&" : "?") + "t=" + Date.now();
+            log("🔄 프리뷰 갱신");
+          }
+        };
+
+        btnIDE.onclick = () => {
+          ideEl.style.display =
+            ideEl.style.display === "none" ? "grid" : "none";
+          if (ideEl.style.display !== "none") {
+            setTimeout(() => fit?.fit(), 0);
+          }
+        };
+      }
+
+      async function openFile(p) {
+        try {
+          const buf = await webcontainerInstance.fs.readFile(p, "utf-8");
+          editorView.dispatch({
+            changes: { from: 0, to: editorView.state.doc.length, insert: buf },
+          });
+          currentPath = p;
+          openedPathEl.textContent = p;
+          log(`📖 열기: ${p}`);
+        } catch (e) {
+          log("열기 실패: " + e.message);
+        }
+      }
+
+      async function renderTree() {
+        if (!webcontainerInstance) return;
+        async function entryNode(path) {
+          const name = path.split("/").filter(Boolean).pop() || "/";
+          const wrap = document.createElement("div");
+          const btn = document.createElement("button");
+          btn.textContent = (await isDir(path)) ? `📁 ${name}/` : `📄 ${name}`;
+          wrap.appendChild(btn);
+          if (await isDir(path)) {
+            const child = document.createElement("div");
+            child.style.marginLeft = "12px";
+            child.style.display = "none";
+            let expanded = false;
+            btn.onclick = async () => {
+              if (!expanded) {
+                const items = await webcontainerInstance.fs.readdir(path);
+                for (const it of items) {
+                  const full = path === "/" ? `/${it}` : `${path}/${it}`;
+                  if (full.startsWith("/node_modules")) {
+                    const nm = document.createElement("div");
+                    nm.textContent = "└─ node_modules/ …";
+                    child.appendChild(nm);
+                    continue;
+                  }
+                  child.appendChild(await entryNode(full));
+                }
+                expanded = true;
+              }
+              child.style.display =
+                child.style.display === "none" ? "block" : "none";
+            };
+            wrap.appendChild(child);
+          } else {
+            btn.onclick = () => openFile(path);
+          }
+          return wrap;
+        }
+        treeEl.innerHTML = "";
+        treeEl.appendChild(await entryNode("/"));
+      }
+
+      async function fingerprint(root = "/", maxDepth = 2, skipHeavy = true) {
+        const acc = [];
+        async function walk(p, depth) {
+          if (skipHeavy && p.startsWith("/node_modules")) {
+            acc.push("D:/node_modules");
+            return;
+          }
+          let entries = [];
+          try {
+            entries = await webcontainerInstance.fs.readdir(p);
+          } catch {
+            return;
+          }
+          entries.sort();
+          for (const name of entries) {
+            const full = p === "/" ? `/${name}` : `${p}/${name}`;
+            try {
+              const isD = await isDir(full);
+              if (isD) {
+                acc.push("D:" + full);
+                if (depth < maxDepth) await walk(full, depth + 1);
+              } else {
+                const buf = await webcontainerInstance.fs.readFile(full);
+                const size = (buf.byteLength ?? buf.length) | 0;
+                acc.push("F:" + full + ":" + size);
+              }
+            } catch {}
+          }
+        }
+        await walk(root, 0);
+        return acc.join("|");
+      }
+
+      let lastFp = "";
+      async function startFsAutoRefresh() {
+        if (fsPollTimer) clearInterval(fsPollTimer);
+        lastFp = await fingerprint("/", 2, true);
+        fsPollTimer = setInterval(async () => {
+          try {
+            const cur = await fingerprint("/", 2, true);
+            if (cur !== lastFp) {
+              lastFp = cur;
+              await renderTree();
+            }
+          } catch {}
+        }, 1200);
+      }
+
+      async function setupTerminal() {
+        term = new Terminal({ convertEol: true, fontSize: 13 });
+        fit = new FitAddon();
+        term.loadAddon(fit);
+        term.open(document.getElementById("terminal"));
+        fit.fit();
+        shellProc = await webcontainerInstance.spawn("jsh", {
+          terminal: { cols: term.cols, rows: term.rows },
+        });
+        shellProc.output.pipeTo(
+          new WritableStream({
+            write(data) {
+              term.write(data);
+            },
+          })
+        );
+        const writer = shellProc.input.getWriter();
+        term.onData((d) => writer.write(d));
+        new ResizeObserver(() => {
+          fit.fit();
+          shellProc.resize({ cols: term.cols, rows: term.rows });
+        }).observe(document.getElementById("terminal"));
+        term.focus();
+        term.write(
+          "💡 터미널이 준비되었습니다. 예: npm -v, ls, cat server.js\r\n"
+        );
+      }
+    </script>
+  </body>
+</html>
