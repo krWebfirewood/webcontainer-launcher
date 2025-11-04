@@ -36,9 +36,7 @@ const server = http.createServer(async (req, res) => {
     // / 또는 /index.html 모두 launcher.html로
     let filePath =
       "." +
-      (req.url === "/" || req.url === "/index.html"
-        ? "/launcher.html"
-        : req.url);
+      (req.url === "/" || req.url === "/index.html" ? "/index.html" : req.url);
     const ext = extname(filePath);
     const contentType = mimeTypes[ext] || "application/octet-stream";
 
